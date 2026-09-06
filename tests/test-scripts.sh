@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Quoted tildes intentionally exercise the plugin's literal path interface.
+# shellcheck disable=SC2088
 set -euo pipefail
 
 root=$(realpath "$(dirname "${BASH_SOURCE[0]}")/..")

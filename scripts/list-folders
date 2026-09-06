@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Quoted tildes are literal picker input; this script expands them explicitly.
+# shellcheck disable=SC2088
 set -euo pipefail
 
 requested=${1-}
