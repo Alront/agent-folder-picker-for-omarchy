@@ -98,9 +98,9 @@ QMLLINT=$(command -v qmllint || printf /usr/lib/qt6/bin/qmllint)
 ./tests/test-scripts.sh
 ```
 
-The plugin does not use `sudo`, install packages, download code, or run a
-second Quickshell process. Like every Omarchy Shell plugin, its QML and helper
-scripts run unsandboxed with the current user's permissions.
+The plugin does not request elevated privileges, install packages, download
+code, or run a second Quickshell process. Like every Omarchy Shell plugin, its
+QML and helper scripts run unsandboxed with the current user's permissions.
 
 ## License
 
