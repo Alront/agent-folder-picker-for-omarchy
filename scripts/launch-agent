@@ -1,0 +1,63 @@
+#!/bin/bash
+
+set -euo pipefail
+
+requested=${1-}
+[[ -n $requested ]] || exit 0
+
+case $requested in
+"~") candidate=$HOME ;;
+"~/"*) candidate="$HOME/${requested:2}" ;;
+/*) candidate=$requested ;;
+*) candidate="$HOME/$requested" ;;
+esac
+
+if ! folder=$(realpath -e -- "$candidate" 2>/dev/null) || [[ ! -d $folder ]]; then
+  omarchy-notification-send "Agent Folder Picker" "Folder not found: $requested" -u critical
+  exit 1
+fi
+
+update_history() (
+  local state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/agent-folder-picker
+  local history_file=$state_dir/paths
+  local tmp
+
+  mkdir -p -- "$state_dir" 2>/dev/null || return 0
+  exec 9>"$state_dir/.lock" || return 0
+  flock -w 1 -x 9 || return 0
+  tmp=$(mktemp "$state_dir/paths.XXXXXX") || return 0
+
+  if ! {
+    printf '%s\n' "$folder"
+    count=1
+
+    if [[ -r $history_file ]]; then
+      while IFS= read -r previous || [[ -n $previous ]]; do
+        [[ -n $previous && $previous != "$folder" ]] || continue
+        printf '%s\n' "$previous"
+        count=$((count + 1))
+        if ((count >= 30)); then break; fi
+      done <"$history_file"
+    fi
+  } >"$tmp"; then
+    rm -f -- "$tmp"
+    return 0
+  fi
+
+  mv -- "$tmp" "$history_file" || rm -f -- "$tmp"
+  return 0
+)
+
+update_history
+
+agent_command=(omarchy-agent --inline --pick)
+if [[ $folder == "$HOME" ]]; then
+  # Omarchy normally redirects launches from $HOME to ~/Work. A logically
+  # equivalent PWD keeps an explicitly selected home directory intact.
+  agent_command=(env "PWD=$folder/." "${agent_command[@]}")
+fi
+
+exec setsid uwsm-app -- xdg-terminal-exec \
+  --dir="$folder" \
+  --app-id=org.omarchy.agent \
+  -e "${agent_command[@]}"

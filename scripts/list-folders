@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -euo pipefail
+
+requested=${1-}
+[[ -n $requested ]] || requested="~/"
+
+case $requested in
+"~") expanded=$HOME ;;
+"~/"*) expanded="$HOME/${requested:2}" ;;
+/*) expanded=$requested ;;
+*) expanded="$HOME/$requested" ;;
+esac
+
+if [[ $expanded == */ ]]; then
+  parent=${expanded%/}
+  [[ -n $parent ]] || parent=/
+  needle=""
+else
+  parent=${expanded%/*}
+  needle=${expanded##*/}
+  if [[ $parent == "$expanded" ]]; then
+    parent=$HOME
+  elif [[ -z $parent ]]; then
+    parent=/
+  fi
+fi
+
+[[ -d $parent ]] || exit 0
+
+needle_lower=${needle,,}
+count=0
+while IFS= read -r -d '' folder; do
+  name=${folder##*/}
+  [[ ${name,,} == "$needle_lower"* ]] || continue
+  printf '%s\n' "$folder"
+  count=$((count + 1))
+  ((count >= 5)) && break
+done < <(find "$parent" -mindepth 1 -maxdepth 1 -xtype d -print0 2>/dev/null)
+
+exit 0
