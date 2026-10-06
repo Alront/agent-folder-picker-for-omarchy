@@ -437,6 +437,13 @@ Item {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
 
+    Shortcut {
+      sequence: "Alt+C"
+      context: Qt.WindowShortcut
+      enabled: root.opened
+      onActivated: root.toggleAgentSettings()
+    }
+
     Rectangle {
       anchors.fill: parent
       color: root.scrim
@@ -467,10 +474,7 @@ Item {
 
         Keys.priority: Keys.BeforeItem
         Keys.onPressed: function(event) {
-          if (event.key === Qt.Key_C && (event.modifiers & Qt.AltModifier)) {
-            root.toggleAgentSettings()
-            event.accepted = true
-          } else if (root.agentSettingsOpen) {
+          if (root.agentSettingsOpen) {
             if (event.key === Qt.Key_Escape) root.toggleAgentSettings()
             else if (event.key === Qt.Key_Up) root.moveAgentSettings(-1)
             else if (event.key === Qt.Key_Down) root.moveAgentSettings(1)
@@ -538,6 +542,7 @@ Item {
           }
 
           Text {
+            id: agentConfigureHint
             textFormat: Text.PlainText
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
@@ -546,6 +551,12 @@ Item {
             opacity: 0.55
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
+
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.toggleAgentSettings()
+            }
           }
         }
 
