@@ -52,7 +52,12 @@ update_history() (
 
 update_history
 
-agent_command=(omarchy-agent --inline --pick)
+requested_agent=${2:-default}
+case $requested_agent in
+  codex|opencode) agent_command=("$requested_agent") ;;
+  *) agent_command=(omarchy-agent --inline --pick) ;;
+esac
+
 if [[ $folder == "$HOME" ]]; then
   # Omarchy normally redirects launches from $HOME to ~/Work. A logically
   # equivalent PWD keeps an explicitly selected home directory intact.

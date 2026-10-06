@@ -66,6 +66,22 @@ mapfile -t history <"$history_file"
 [[ ${history[0]} == "$home/Alpha" ]]
 [[ ${history[1]} == "$home/Beta" ]]
 
+HOME="$home" XDG_STATE_HOME="$state" CAPTURE="$capture" \
+  PATH="$tmp/bin:$PATH" "$root/scripts/launch-agent" "~/Alpha" codex
+mapfile -t args <"$capture"
+[[ ${args[6]} == "codex" ]]
+
+HOME="$home" XDG_STATE_HOME="$state" CAPTURE="$capture" \
+  PATH="$tmp/bin:$PATH" "$root/scripts/launch-agent" "~/Alpha" opencode
+mapfile -t args <"$capture"
+[[ ${args[6]} == "opencode" ]]
+
+HOME="$home" XDG_STATE_HOME="$state" CAPTURE="$capture" \
+  PATH="$tmp/bin:$PATH" "$root/scripts/launch-agent" "~/Alpha" "codex; touch $tmp/unexpected"
+mapfile -t args <"$capture"
+[[ ${args[6]} == "omarchy-agent" ]]
+[[ ! -e $tmp/unexpected ]]
+
 for index in {1..35}; do
   printf '/example/project-%02d\n' "$index"
 done >"$history_file"

@@ -10,8 +10,10 @@ Shell process and follows the active Omarchy theme.
 
 - Filesystem folder autocomplete with five visible matches.
 - A separate list of recently opened folders.
-- Launches the default Omarchy agent, including OpenCode, Claude Code, Codex,
-  Grok, Gemini, GitHub Copilot, Crush, Pi, and Oh My Pi.
+- Starts with the configured Omarchy agent, including OpenCode, Claude Code,
+  Codex, Grok, Gemini, GitHub Copilot, Crush, Pi, and Oh My Pi.
+- `Shift+Tab` switches the selected CLI between Codex and OpenCode.
+- The selected agent is shown above the folder field.
 - Mouse and keyboard navigation.
 - XDG-compliant local history with a maximum of 30 unique paths.
 - Home-directory paths are displayed using `~`.
@@ -20,6 +22,7 @@ Shell process and follows the active Omarchy theme.
 
 - Omarchy 4.0 or newer with the Quattro shell plugin system.
 - A default coding agent configured through Omarchy.
+- Install Codex and/or OpenCode to use those choices with `Shift+Tab`.
 
 The runtime uses `bash`, `find`, `realpath`, `flock`, `uwsm-app`,
 `xdg-terminal-exec`, and `omarchy-agent`. These are provided by Omarchy and its
@@ -62,7 +65,9 @@ omarchy-shell shell toggle io.github.alront.agent-folder-picker '{}'
 - `Up` / `Down`: select an autocomplete result.
 - `Shift+Up` / `Shift+Down`: select a previously opened path.
 - `Tab`: complete the selected folder.
-- `Enter`: launch the default agent in the typed or selected folder.
+- `Shift+Tab`: switch between Codex and OpenCode, starting with the configured
+  default agent.
+- `Enter`: launch the selected agent in the typed or selected folder.
 - `Escape`: clear the input, then close the picker.
 
 Recent paths are stored in

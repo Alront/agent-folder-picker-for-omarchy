@@ -18,6 +18,8 @@ Item {
   property int historySelectedIndex: 0
   property bool historyCursorActive: false
   property int completionRequest: 0
+  property string defaultAgent: "opencode"
+  property string selectedAgent: "opencode"
 
   readonly property string pluginId: root.manifest && root.manifest.id
     ? String(root.manifest.id)
@@ -26,8 +28,10 @@ Item {
     ? String(root.manifest.__sourceDir)
     : ""
   readonly property string homePath: Quickshell.env("HOME")
+  readonly property string configHome: Quickshell.env("XDG_CONFIG_HOME") || (root.homePath + "/.config")
   readonly property string stateHome: Quickshell.env("XDG_STATE_HOME") || (root.homePath + "/.local/state")
   readonly property string historyPath: root.stateHome + "/omarchy/agent-folder-picker/paths"
+  readonly property string defaultAgentPath: root.configHome + "/omarchy/defaults/agent"
   readonly property string launcherPath: root.pluginDir + "/scripts/launch-agent"
   readonly property string completionPath: root.pluginDir + "/scripts/list-folders"
 
@@ -50,6 +54,7 @@ Item {
 
   function open(payloadJson) {
     root.opened = true
+    root.selectedAgent = root.defaultAgent
     root.filterText = "~/"
     root.selectedIndex = 0
     root.cursorActive = false
@@ -73,6 +78,24 @@ Item {
   function toggle() {
     if (root.opened) root.dismiss()
     else root.open("{}")
+  }
+
+  function loadDefaultAgent(raw) {
+    var agent = String(raw || "").trim().toLowerCase()
+    if (/^[a-z0-9][a-z0-9_-]*$/.test(agent)) {
+      root.defaultAgent = agent
+      if (!root.opened) root.selectedAgent = agent
+    }
+  }
+
+  function agentLabel(agent) {
+    if (agent === "codex") return "Codex"
+    if (agent === "opencode") return "OpenCode"
+    return agent.length ? agent.charAt(0).toUpperCase() + agent.slice(1) : "Default"
+  }
+
+  function switchAgent() {
+    root.selectedAgent = root.selectedAgent === "codex" ? "opencode" : "codex"
   }
 
   function displayPath(path) {
@@ -212,7 +235,7 @@ Item {
     if (!requested) return
 
     root.dismiss()
-    Quickshell.execDetached([root.launcherPath, requested])
+    Quickshell.execDetached([root.launcherPath, requested, root.selectedAgent])
   }
 
   function activateIndex(index) {
@@ -272,6 +295,16 @@ Item {
       if (serial > 0 && serial === root.completionRequest)
         root.startCompletionScan(serial, query)
     }
+  }
+
+  FileView {
+    id: defaultAgentFile
+    path: root.defaultAgentPath
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.loadDefaultAgent(text())
+    onLoadFailed: root.loadDefaultAgent("opencode")
+    onFileChanged: reload()
   }
 
   FileView {
@@ -336,6 +369,10 @@ Item {
             if (event.modifiers & Qt.ShiftModifier) root.selectHistory(-1)
             else root.select(1)
             event.accepted = true
+          } else if (event.key === Qt.Key_Backtab
+                     || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
+            root.switchAgent()
+            event.accepted = true
           } else if (event.key === Qt.Key_Tab) {
             root.completeSelected()
             event.accepted = true
@@ -362,6 +399,35 @@ Item {
 
         Rectangle {
           width: parent.width
+          height: root.footerHeight
+          radius: root.cornerRadius
+          color: "transparent"
+
+          Text {
+            textFormat: Text.PlainText
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "AGENT · " + root.agentLabel(root.selectedAgent)
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+
+          Text {
+            textFormat: Text.PlainText
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Shift+Tab: switch agent"
+            color: root.foreground
+            opacity: 0.55
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+        }
+
+        Rectangle {
+          width: parent.width
           height: root.headerHeight
           radius: root.cornerRadius
           color: "transparent"
@@ -382,7 +448,7 @@ Item {
 
         Row {
           width: parent.width
-          height: parent.height - root.headerHeight - root.footerHeight - root.contentSpacing * 2
+          height: parent.height - root.headerHeight - root.footerHeight * 2 - root.contentSpacing * 3
           spacing: root.contentSpacing
 
           Item {
@@ -544,7 +610,7 @@ Item {
           textFormat: Text.PlainText
           width: parent.width
           height: root.footerHeight
-          text: "Enter: open    Up/Down: folders    Shift+Up/Down: history    Tab: complete"
+          text: "Enter: open    Up/Down: folders    Shift+Up/Down: history    Tab: complete    Shift+Tab: agent"
           color: root.foreground
           opacity: 0.55
           font.family: root.fontFamily

@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "io.github.alront.agent-folder-picker",
   "name": "Agent Folder Picker",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Agent Folder Picker contributors",
   "license": "MIT",
-  "description": "Choose a folder and launch the default Omarchy coding agent",
+  "description": "Choose a folder and launch the default Omarchy agent, with quick Codex and OpenCode switching",
   "kinds": [
     "overlay"
   ],
