@@ -18,8 +18,15 @@ Item {
   property int historySelectedIndex: 0
   property bool historyCursorActive: false
   property int completionRequest: 0
-  property string defaultAgent: "opencode"
-  property string selectedAgent: "opencode"
+  property string defaultAgent: ""
+  property string selectedAgent: ""
+  property bool selectedAgentManually: false
+  property var availableAgents: []
+  property var cycleAgents: []
+  property var configuredCycleAgents: []
+  property bool hasConfiguredCycle: false
+  property bool agentSettingsOpen: false
+  property int agentSettingsIndex: 0
 
   readonly property string pluginId: root.manifest && root.manifest.id
     ? String(root.manifest.id)
@@ -32,11 +39,14 @@ Item {
   readonly property string stateHome: Quickshell.env("XDG_STATE_HOME") || (root.homePath + "/.local/state")
   readonly property string historyPath: root.stateHome + "/omarchy/agent-folder-picker/paths"
   readonly property string defaultAgentPath: root.configHome + "/omarchy/defaults/agent"
+  readonly property string cycleAgentsPath: root.configHome + "/omarchy/agent-folder-picker-agents"
+  readonly property string agentListPath: root.pluginDir + "/scripts/list-agents"
   readonly property string launcherPath: root.pluginDir + "/scripts/launch-agent"
   readonly property string completionPath: root.pluginDir + "/scripts/list-folders"
 
   property color background: Color.menu.background
   property color foreground: Color.menu.text
+  readonly property color dim: Qt.darker(foreground, 1.55)
   property color border: Color.menu.border
   property var borderSpec: Border.surfaceSpec("menu", "border", border, Math.max(1, Style.space(2)))
   property color scrim: Color.menu.scrim
@@ -54,7 +64,9 @@ Item {
 
   function open(payloadJson) {
     root.opened = true
-    root.selectedAgent = root.defaultAgent
+    root.selectedAgent = root.defaultAgent || (root.availableAgents.length ? root.availableAgents[0] : "")
+    root.selectedAgentManually = false
+    root.agentSettingsOpen = false
     root.filterText = "~/"
     root.selectedIndex = 0
     root.cursorActive = false
@@ -82,20 +94,94 @@ Item {
 
   function loadDefaultAgent(raw) {
     var agent = String(raw || "").trim().toLowerCase()
-    if (/^[a-z0-9][a-z0-9_-]*$/.test(agent)) {
-      root.defaultAgent = agent
-      if (!root.opened) root.selectedAgent = agent
-    }
+    if (agent !== "" && !/^[a-z][a-z0-9-]*$/.test(agent)) return
+    root.defaultAgent = agent
+    if (!root.selectedAgentManually) root.selectedAgent = agent || (root.availableAgents.length ? root.availableAgents[0] : "")
   }
 
   function agentLabel(agent) {
-    if (agent === "codex") return "Codex"
-    if (agent === "opencode") return "OpenCode"
-    return agent.length ? agent.charAt(0).toUpperCase() + agent.slice(1) : "Default"
+    var labels = ({
+      pi: "Pi", omp: "Oh My Pi", opencode: "OpenCode", claude: "Claude",
+      codex: "Codex", grok: "Grok", gemini: "Gemini", openclaw: "OpenClaw",
+      hermes: "Hermes", copilot: "GitHub Copilot", crush: "Crush",
+      "cursor-agent": "Cursor CLI", muse: "Muse Code"
+    })
+    return labels[agent] || (agent.length ? agent.charAt(0).toUpperCase() + agent.slice(1) : "No agent")
+  }
+
+  function loadAvailableAgents(raw) {
+    var lines = String(raw || "").split("\n")
+    var next = []
+    var seen = ({})
+    for (var i = 0; i < lines.length; i++) {
+      var agent = lines[i].trim()
+      if (!agent || seen[agent]) continue
+      seen[agent] = true
+      next.push(agent)
+    }
+    root.availableAgents = next
+    root.applyCycleAgents()
+    if (!root.selectedAgentManually)
+      root.selectedAgent = root.defaultAgent || (next.length ? next[0] : "")
+    if (root.agentSettingsIndex >= next.length) root.agentSettingsIndex = Math.max(0, next.length - 1)
+  }
+
+  function loadCycleAgents(raw) {
+    var lines = String(raw || "").split("\n")
+    var next = []
+    var seen = ({})
+    for (var i = 0; i < lines.length; i++) {
+      var agent = lines[i].trim()
+      if (!agent || seen[agent]) continue
+      seen[agent] = true
+      next.push(agent)
+    }
+    root.configuredCycleAgents = next
+    root.hasConfiguredCycle = true
+    root.applyCycleAgents()
+  }
+
+  function applyCycleAgents() {
+    var next = []
+    var source = root.hasConfiguredCycle ? root.configuredCycleAgents : root.availableAgents
+    for (var i = 0; i < source.length; i++) {
+      if (root.availableAgents.indexOf(source[i]) !== -1) next.push(source[i])
+    }
+    root.cycleAgents = next
+  }
+
+  function toggleAgentSettings() {
+    root.agentSettingsOpen = !root.agentSettingsOpen
+    root.agentSettingsIndex = Math.max(0, root.availableAgents.indexOf(root.cycleAgents[0]))
+    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+  }
+
+  function moveAgentSettings(delta) {
+    if (!root.availableAgents.length) return
+    root.agentSettingsIndex = (root.agentSettingsIndex + delta + root.availableAgents.length) % root.availableAgents.length
+    agentSettingsList.positionViewAtIndex(root.agentSettingsIndex, ListView.Contain)
+  }
+
+  function isCycleAgent(agent) {
+    return root.cycleAgents.indexOf(agent) !== -1
+  }
+
+  function toggleCycleAgent(agent) {
+    var next = root.cycleAgents.slice()
+    var index = next.indexOf(agent)
+    if (index === -1) next.push(agent)
+    else next.splice(index, 1)
+    root.configuredCycleAgents = next
+    root.hasConfiguredCycle = true
+    root.cycleAgents = next
+    cycleAgentsFile.setText(next.join("\n") + (next.length ? "\n" : ""))
   }
 
   function switchAgent() {
-    root.selectedAgent = root.selectedAgent === "codex" ? "opencode" : "codex"
+    if (root.cycleAgents.length === 0) return
+    var index = root.cycleAgents.indexOf(root.selectedAgent)
+    root.selectedAgent = root.cycleAgents[(index + 1 + root.cycleAgents.length) % root.cycleAgents.length]
+    root.selectedAgentManually = true
   }
 
   function displayPath(path) {
@@ -297,13 +383,37 @@ Item {
     }
   }
 
+  Process {
+    id: agentsProcess
+    command: [root.agentListPath]
+    running: true
+
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.loadAvailableAgents(text)
+    }
+  }
+
   FileView {
     id: defaultAgentFile
     path: root.defaultAgentPath
     watchChanges: true
     printErrors: false
     onLoaded: root.loadDefaultAgent(text())
-    onLoadFailed: root.loadDefaultAgent("opencode")
+    onLoadFailed: root.loadDefaultAgent("")
+    onFileChanged: reload()
+  }
+
+  FileView {
+    id: cycleAgentsFile
+    path: root.cycleAgentsPath
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.loadCycleAgents(text())
+    onLoadFailed: {
+      root.hasConfiguredCycle = false
+      root.applyCycleAgents()
+    }
     onFileChanged: reload()
   }
 
@@ -357,7 +467,19 @@ Item {
 
         Keys.priority: Keys.BeforeItem
         Keys.onPressed: function(event) {
-          if (event.key === Qt.Key_Escape) {
+          if (event.key === Qt.Key_C && (event.modifiers & Qt.AltModifier)) {
+            root.toggleAgentSettings()
+            event.accepted = true
+          } else if (root.agentSettingsOpen) {
+            if (event.key === Qt.Key_Escape) root.toggleAgentSettings()
+            else if (event.key === Qt.Key_Up) root.moveAgentSettings(-1)
+            else if (event.key === Qt.Key_Down) root.moveAgentSettings(1)
+            else if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+              if (root.availableAgents.length > 0)
+                root.toggleCycleAgent(root.availableAgents[root.agentSettingsIndex])
+            }
+            event.accepted = true
+          } else if (event.key === Qt.Key_Escape) {
             if (root.filterText) root.setFilter("")
             else root.dismiss()
             event.accepted = true
@@ -390,6 +512,7 @@ Item {
       }
 
       Column {
+        visible: !root.agentSettingsOpen
         anchors.fill: parent
         anchors.topMargin: card.contentTopInset
         anchors.rightMargin: card.contentRightInset
@@ -418,7 +541,7 @@ Item {
             textFormat: Text.PlainText
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: "Shift+Tab: switch agent"
+            text: "Shift+Tab: switch · Alt+C: configure"
             color: root.foreground
             opacity: 0.55
             font.family: root.fontFamily
@@ -610,13 +733,130 @@ Item {
           textFormat: Text.PlainText
           width: parent.width
           height: root.footerHeight
-          text: "Enter: open    Up/Down: folders    Shift+Up/Down: history    Tab: complete    Shift+Tab: agent"
+          text: "Enter: open    Up/Down: folders    Shift+Up/Down: history    Tab: complete    Shift+Tab: agent    Alt+C: configure"
           color: root.foreground
           opacity: 0.55
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
           verticalAlignment: Text.AlignVCenter
           horizontalAlignment: Text.AlignHCenter
+        }
+      }
+
+      Column {
+        id: agentSettingsColumn
+        visible: root.agentSettingsOpen
+        anchors.fill: parent
+        anchors.topMargin: card.contentTopInset
+        anchors.rightMargin: card.contentRightInset
+        anchors.bottomMargin: card.contentBottomInset
+        anchors.leftMargin: card.contentLeftInset
+        spacing: root.contentSpacing
+
+        Item {
+          width: parent.width
+          height: root.headerHeight
+
+          Text {
+            textFormat: Text.PlainText
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "AGENTS TO CYCLE"
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.heading
+            font.bold: true
+          }
+
+          Text {
+            textFormat: Text.PlainText
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Alt+C: done"
+            color: root.foreground
+            opacity: 0.55
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+        }
+
+        Text {
+          width: parent.width
+          height: root.footerHeight
+          text: "Tick the installed agents to include in the Shift+Tab cycle."
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          verticalAlignment: Text.AlignVCenter
+          wrapMode: Text.Wrap
+        }
+
+        ListView {
+          id: agentSettingsList
+          width: parent.width
+          height: parent.height - root.headerHeight - root.footerHeight * 2 - root.contentSpacing * 3
+          model: root.availableAgents
+          clip: true
+          spacing: Style.space(3)
+          boundsBehavior: Flickable.StopAtBounds
+
+          delegate: Rectangle {
+            id: agentSettingsRow
+            required property int index
+            required property var modelData
+
+            width: ListView.view.width
+            height: root.rowHeight
+            radius: root.cornerRadius
+            color: index === root.agentSettingsIndex ? root.selectedBackground : "transparent"
+
+            Text {
+              textFormat: Text.PlainText
+              anchors.left: parent.left
+              anchors.leftMargin: Style.space(12)
+              anchors.verticalCenter: parent.verticalCenter
+              text: root.isCycleAgent(agentSettingsRow.modelData) ? "✓" : "□"
+              color: index === root.agentSettingsIndex ? root.selectedText : root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.title
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              anchors.left: parent.left
+              anchors.leftMargin: Style.space(42)
+              anchors.right: parent.right
+              anchors.rightMargin: Style.space(12)
+              anchors.verticalCenter: parent.verticalCenter
+              text: root.agentLabel(String(agentSettingsRow.modelData))
+              color: index === root.agentSettingsIndex ? root.selectedText : root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.title
+              elide: Text.ElideRight
+            }
+
+            MouseArea {
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onEntered: root.agentSettingsIndex = agentSettingsRow.index
+              onClicked: root.toggleCycleAgent(String(agentSettingsRow.modelData))
+            }
+          }
+        }
+
+        Text {
+          width: parent.width
+          height: root.footerHeight
+          text: root.availableAgents.length === 0
+            ? "No installed selectable agents were found."
+            : "Space/Enter or click: toggle · Up/Down: move · Esc: back"
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          verticalAlignment: Text.AlignVCenter
+          horizontalAlignment: Text.AlignHCenter
+          wrapMode: Text.Wrap
         }
       }
     }

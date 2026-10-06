@@ -16,6 +16,8 @@ jobs:
       - name: Validate manifest
         run: ./tests/validate-manifest.sh
       - name: Run ShellCheck
-        run: shellcheck scripts/list-folders scripts/launch-agent tests/test-scripts.sh tests/validate-manifest.sh
+        run: shellcheck scripts/list-agents scripts/list-folders scripts/launch-agent tests/test-list-agents.sh tests/test-scripts.sh tests/validate-manifest.sh
+      - name: Test installed-agent discovery
+        run: ./tests/test-list-agents.sh
       - name: Run script tests
         run: ./tests/test-scripts.sh

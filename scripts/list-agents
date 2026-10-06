@@ -1,0 +1,45 @@
+#!/bin/bash
+
+set -euo pipefail
+
+agent_options=$(omarchy default agent --help 2>/dev/null | awk '
+  /omarchy default agent \[/ {
+    sub(/^.*\[/, "")
+    sub(/\].*$/, "")
+    print
+    exit
+  }
+') || true
+[[ -n $agent_options ]] || exit 0
+
+user_install() {
+  local agent=$1 path="$HOME/.local/bin/$1"
+  [[ -x $path ]] && { [[ -L $path ]] || ! grep -q '^mise use -g' "$path"; }
+}
+
+agent_installed() {
+  local agent=$1 package=$1
+  case $agent in
+    omp) package=github:can1357/oh-my-pi ;;
+    grok) package=npm:@xai-official/grok ;;
+    muse) package='http:muse[url=https://api.meta.ai/muse-launcher.sh,bin=muse,version_list_url=https://api.meta.ai/muse-code/channels/muse-stable,version_json_path=.version]' ;;
+  esac
+
+  if user_install "$agent"; then
+    return 0
+  fi
+
+  case $agent in
+    openclaw) omarchy-install-openclaw-cli --check >/dev/null 2>&1 ;;
+    hermes) omarchy-install-hermes-cli --check >/dev/null 2>&1 ;;
+    *) command -v mise >/dev/null 2>&1 && mise where "$package" >/dev/null 2>&1 ;;
+  esac
+}
+
+IFS='|' read -r -a selectable_agents <<<"$agent_options"
+for agent in "${selectable_agents[@]}"; do
+  [[ $agent =~ ^[a-z][a-z0-9-]*$ ]] || continue
+  if agent_installed "$agent"; then
+    printf '%s\n' "$agent"
+  fi
+done

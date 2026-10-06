@@ -70,11 +70,20 @@ HOME="$home" XDG_STATE_HOME="$state" CAPTURE="$capture" \
   PATH="$tmp/bin:$PATH" "$root/scripts/launch-agent" "~/Alpha" codex
 mapfile -t args <"$capture"
 [[ ${args[6]} == "codex" ]]
+[[ ${args[7]} == "--approve-for-me" ]]
 
 HOME="$home" XDG_STATE_HOME="$state" CAPTURE="$capture" \
   PATH="$tmp/bin:$PATH" "$root/scripts/launch-agent" "~/Alpha" opencode
 mapfile -t args <"$capture"
 [[ ${args[6]} == "opencode" ]]
+[[ ${args[7]} == "--auto" ]]
+
+HOME="$home" XDG_STATE_HOME="$state" CAPTURE="$capture" \
+  PATH="$tmp/bin:$PATH" "$root/scripts/launch-agent" "~/Alpha" claude
+mapfile -t args <"$capture"
+[[ ${args[6]} == "claude" ]]
+[[ ${args[7]} == "--permission-mode" ]]
+[[ ${args[8]} == "auto" ]]
 
 HOME="$home" XDG_STATE_HOME="$state" CAPTURE="$capture" \
   PATH="$tmp/bin:$PATH" "$root/scripts/launch-agent" "~/Alpha" "codex; touch $tmp/unexpected"

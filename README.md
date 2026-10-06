@@ -10,9 +10,10 @@ Shell process and follows the active Omarchy theme.
 
 - Filesystem folder autocomplete with five visible matches.
 - A separate list of recently opened folders.
-- Starts with the configured Omarchy agent, including OpenCode, Claude Code,
-  Codex, Grok, Gemini, GitHub Copilot, Crush, Pi, and Oh My Pi.
-- `Shift+Tab` switches the selected CLI between Codex and OpenCode.
+- Starts with the configured Omarchy agent and discovers installed agents
+  supported by Omarchy.
+- `Shift+Tab` cycles through the selected agents.
+- `Alt+C` opens the installed-agent list, where agents can be checked on or off.
 - The selected agent is shown above the folder field.
 - Mouse and keyboard navigation.
 - XDG-compliant local history with a maximum of 30 unique paths.
@@ -22,11 +23,12 @@ Shell process and follows the active Omarchy theme.
 
 - Omarchy 4.0 or newer with the Quattro shell plugin system.
 - A default coding agent configured through Omarchy.
-- Install Codex and/or OpenCode to use those choices with `Shift+Tab`.
+- Agents shown for selection are those both supported by Omarchy and installed.
 
-The runtime uses `bash`, `find`, `realpath`, `flock`, `uwsm-app`,
-`xdg-terminal-exec`, and `omarchy-agent`. These are provided by Omarchy and its
-base system; the plugin downloads nothing and installs no packages.
+The runtime uses `bash`, `awk`, `find`, `grep`, `realpath`, `flock`, `mise`,
+`uwsm-app`, `xdg-terminal-exec`, and Omarchy's agent commands. These are
+provided by Omarchy and its base system; the plugin downloads nothing and
+installs no packages.
 
 Set or change the default agent with, for example:
 
@@ -65,13 +67,17 @@ omarchy-shell shell toggle io.github.alront.agent-folder-picker '{}'
 - `Up` / `Down`: select an autocomplete result.
 - `Shift+Up` / `Shift+Down`: select a previously opened path.
 - `Tab`: complete the selected folder.
-- `Shift+Tab`: switch between Codex and OpenCode, starting with the configured
+- `Shift+Tab`: cycle through enabled agents, starting with the configured
   default agent.
+- `Alt+C`: configure which installed agents participate in the cycle. New
+  installs include every installed agent by default.
 - `Enter`: launch the selected agent in the typed or selected folder.
 - `Escape`: clear the input, then close the picker.
 
 Recent paths are stored in
 `${XDG_STATE_HOME:-~/.local/state}/omarchy/agent-folder-picker/paths`.
+The selected agent cycle is stored in
+`${XDG_CONFIG_HOME:-~/.config}/omarchy/agent-folder-picker-agents`.
 History is best-effort: an unwritable state directory does not prevent an agent
 from launching. Folder names containing newline characters are not supported.
 

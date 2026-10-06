@@ -53,9 +53,23 @@ update_history() (
 update_history
 
 requested_agent=${2:-default}
+[[ $requested_agent =~ ^[a-z][a-z0-9-]*$ || $requested_agent == default ]] || requested_agent=default
 case $requested_agent in
-  codex|opencode) agent_command=("$requested_agent") ;;
-  *) agent_command=(omarchy-agent --inline --pick) ;;
+  default) agent_command=(omarchy-agent --inline --pick) ;;
+  opencode) agent_command=(opencode --auto) ;;
+  claude) agent_command=(claude --permission-mode auto) ;;
+  codex) agent_command=(codex --approve-for-me) ;;
+  grok) agent_command=(grok --permission-mode bypassPermissions) ;;
+  gemini) agent_command=(gemini --yolo) ;;
+  copilot) agent_command=(copilot --allow-all) ;;
+  crush) agent_command=(crush --yolo) ;;
+  openclaw) agent_command=(omarchy-launch-openclaw --tui) ;;
+  hermes) agent_command=(hermes --yolo) ;;
+  muse) agent_command=(muse --approval-mode never) ;;
+  omp) agent_command=(omp --auto-approve) ;;
+  pi) agent_command=(pi) ;;
+  cursor-agent) agent_command=(cursor-agent --yolo --trust) ;;
+  *) agent_command=("$requested_agent") ;;
 esac
 
 if [[ $folder == "$HOME" ]]; then
